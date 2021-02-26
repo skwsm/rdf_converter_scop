@@ -1,4 +1,4 @@
-# rdf_converter_scop
-A script rdfizing SCOP database
+# RDF converter for SCOP database
+
 
 #
