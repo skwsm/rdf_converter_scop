@@ -15,8 +15,10 @@ module SCOP
     "dct" => "<http://purl.org/dc/terms/>",
     "pubmedid" => "<http://identifiers.org/pubmed/>",
     "pubmed" => "<http://rdf.ncbi.nlm.nih.gov/pubmed/>",
-    "scop" => "http://scop.mrc-lmb.cam.ac.uk/term/8045338",
-    "scop_idorg" => "http://identifiers.org/scop/"
+    "scop" => "<http://scop.mrc-lmb.cam.ac.uk/term/>",
+    "scop_idorg" => "<http://identifiers.org/scop/>",
+    "pdb" => "<http://wwpdb.org/>",
+    "up" => "<http://pul.uniprot.org/uniprot/>"
   }
 
   def prefixes
@@ -38,8 +40,10 @@ module SCOP
     def self.rdf(file_class, file_desc, prefixes = false)
       File.open(file_desc) do |f|
         while line = f.gets
-          /^(\d+)\s(.+)$/ =~ line
-          @@descs[$1] = $2
+          unless /^#/ =~ line
+            /^(\d+)\s(.+)$/ =~ line
+            @@descs[$1] = $2
+          end
         end
       end
       File.open(file_class) do |f|
@@ -85,18 +89,51 @@ module SCOP
 
     def self.construct_turtle
       @@fa_doms.each do |e|
-        p e
+        print "scop:#{e[0]} a scop:Term ;\n"
+        print "  dct:identifier \"#{e[0]}\" ;\n"
+        print "  scop:rank scop:FamilyDomain ;\n"
+        print "  rdfs:label \"#{@@descs[e[0]]}\" ;\n" if /^[01234]/ =~ @@descs[e[0]]
+        print "  skos:exactMatch scop_idorg:#{e[0]} ;\n"
+        print "  rdfs:seeAlso pdb:#{e[1][0][0]} ;\n"
+        print "  rdfs:seeAlso up:#{e[1][0][2]} .\n"
+      end
+
+      @@sf_doms.each do |e|
+        print "scop:#{e[0]} a scop:Term ;\n"
+        print "  dct:identifier \"#{e[0]}\" ;\n"
+        print "  scop:rank scop:SuperfamilyDomain ;\n"
+        print "  rdfs:label \"#{@@descs[e[0]]}\" ;\n" if /^[01234]/ =~ @@descs[e[0]]
+        print "  skos:exactMatch scop_idorg:#{e[0]} ;\n"
+        print "  rdfs:seeAlso pdb:#{e[1][0][0]} ;\n"
+        print "  rdfs:seeAlso up:#{e[1][0][2]} .\n"
+      end
+
+      @@descs.each do |e|
+        if e[0].size > 2
+          print "scop:#{e[0]} a scop:Term .\n"
+          case e[0]
+          when /^1/
+            print "scop:#{e[0]} scop:rank scop:StructualClass .\n"
+          when /^2/
+            print "scop:#{e[0]} scop:rank scop:Fold .\n"
+          when /^3/
+            print "scop:#{e[0]} scop:rank scop:Superfamily .\n"
+          when /^4/
+            print "scop:#{e[0]} scop:rank scop:Family .\n"
+          end
+        end
+      end
+
+      @@rels.each do |e|
+        children = e[1].uniq
+        parent = e[0]
+        children.each do |child|
+          print "scop:#{child} rdfs:subClassOf scop:#{parent} .\n"
+          print "scop:#{parent} skos:narrower scop:#{child} .\n"
+        end
       end
     end
-#        Hash[*scopcla.split(",").map{|e| e.split("=")}.flatten]
 
-    def construct_turtle(fa_domid, fa_pdbid, fa_pdbreg, fa_uniid, fa_unireg,
-                         sf_domid, sf_pdbid, sf_pdbreg, sf_uniid, sf_unireg,
-                         scopcla)
-
-
-
-    end
   end
 
 end
