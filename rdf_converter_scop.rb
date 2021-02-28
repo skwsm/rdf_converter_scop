@@ -36,6 +36,7 @@ module SCOP
     @@sf_doms = {}
     @@rels = {}
     @@descs = {}
+    @@metainfo = []
 
     def self.rdf(file_class, file_desc, prefixes = false)
       File.open(file_desc) do |f|
@@ -49,10 +50,14 @@ module SCOP
       File.open(file_class) do |f|
         SCOP.prefixes if $prefixes
         while line = f.gets
-          unless /^#/ =~ line
-            ary = parse(line)
-            @@fa_doms.key?(ary[0]) ? @@fa_doms[ary[0]] << ary[1..4] + [ary[10]] : @@fa_doms[ary[0]] = [ary[1..4] + [ary[10]]]
-            @@sf_doms.key?(ary[5]) ? @@sf_doms[ary[5]] << ary[6..10] : @@sf_doms[ary[5]] = [ary[6..10]]
+          ary = parse(line)
+          unless ary == []  
+          @@fa_doms.key?(ary[0]) ? 
+            @@fa_doms[ary[0]] << ary[1..4] + [ary[10]] :
+            @@fa_doms[ary[0]] = [ary[1..4] + [ary[10]]]
+          @@sf_doms.key?(ary[5]) ?
+            @@sf_doms[ary[5]] << ary[6..10] :
+            @@sf_doms[ary[5]] = [ary[6..10]]
           end
         end
       end
@@ -62,6 +67,7 @@ module SCOP
     def self.parse(line)
       ary = []
       if /^#/ =~ line
+        @@metainfo << line
       elsif /^\d/ =~ line
         ary = line.split(" ")
         scopcla = Hash[*ary[-1].split(",")
@@ -88,6 +94,18 @@ module SCOP
     end
 
     def self.construct_turtle
+
+      print "<http://scop.mrc-lmb.cam.ac.uk>\n"
+      print "  rdfs:label \"SCOP: Structural Classification of Proteins\" ;\n"
+
+      @@metainfo.each do |e|
+        case e
+        when /SCOP release (.+)/
+          print "  dct:issued \"#{$1}^^xsd:date\" .\n\n"
+        else
+        end
+      end
+
       @@fa_doms.each do |e|
         print "scop:#{e[0]} a scop:Term ;\n"
         print "  dct:identifier \"#{e[0]}\" ;\n"
@@ -95,7 +113,7 @@ module SCOP
         print "  rdfs:label \"#{@@descs[e[0]]}\" ;\n" if /^[01234]/ =~ @@descs[e[0]]
         print "  skos:exactMatch scop_idorg:#{e[0]} ;\n"
         print "  rdfs:seeAlso pdb:#{e[1][0][0]} ;\n"
-        print "  rdfs:seeAlso up:#{e[1][0][2]} .\n"
+        print "  rdfs:seeAlso #{e[1][0][2].split(',').map{|i| "up:#{i}"}.join(", ")} .\n\n"
       end
 
       @@sf_doms.each do |e|
@@ -105,7 +123,7 @@ module SCOP
         print "  rdfs:label \"#{@@descs[e[0]]}\" ;\n" if /^[01234]/ =~ @@descs[e[0]]
         print "  skos:exactMatch scop_idorg:#{e[0]} ;\n"
         print "  rdfs:seeAlso pdb:#{e[1][0][0]} ;\n"
-        print "  rdfs:seeAlso up:#{e[1][0][2]} .\n"
+        print "  rdfs:seeAlso up:#{e[1][0][2]} .\n\n"
       end
 
       @@descs.each do |e|
